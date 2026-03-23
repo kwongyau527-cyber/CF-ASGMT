@@ -51,3 +51,5 @@ print(f"Rows in y: {len(y)}, Rows in X: {len(X)}")
 pooled_model = sm.OLS(y, X).fit()
 print(pooled_model.summary())
 
+fe_model = PanelOLS(y, X, entity_effects=True).fit()
+print(fe_model.summary)
