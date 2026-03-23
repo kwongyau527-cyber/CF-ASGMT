@@ -1,0 +1,53 @@
+import pandas as pd
+
+df = pd.read_excel("dataset.xlsx")
+
+print(df.head())
+print(df.info())
+
+pct_cols = ['DPR', 'ROA','GLIC', 'CASH']
+for col in pct_cols:
+    if df[col].dtype == 'object':
+        # Remove % and convert to float (e.g., '10%' becomes 0.10)
+        df[col] = df[col].str.replace('%', '', regex=False).astype(float) / 100
+
+# Define all variables involved in the regression
+core_ivs = ['ESC', 'SSC', 'GSC', 'CSC']
+moderators = ['GLIC', 'SHARIAH']
+controls = ['AGE', 'ROA', 'LN_TA', 'LEV', 'MBV', 'CASH']
+all_vars = ['DPR'] + core_ivs + moderators + controls
+
+for col in all_vars:
+    # Convert strings/objects to numeric, turning errors into NaN
+    df[col] = pd.to_numeric(df[col], errors='coerce')
+
+# Drop rows with any NaN values to ensure a balanced/clean panel for regression
+df = df.dropna(subset=all_vars)
+
+print(f"Data Cleaning Complete. Remaining observations: {len(df)}")
+
+# Dependent variable
+y = df["DPR"]
+
+# Core ESG variables
+X_esg = df[["ESC", "SSC", "GSC", "CSC"]]
+
+# Controls
+controls = df[["AGE", "ROA", "LN_TA", "LEV", "MBV", "CASH"]]
+
+# Moderators
+GLIC = df["GLIC"]
+SHARIAH = df["SHARIAH"]
+
+from linearmodels.panel import PanelOLS, RandomEffects
+
+df = df.set_index(["FirmID", "Year"])
+
+import statsmodels.api as sm
+
+X = sm.add_constant(pd.concat([X_esg, controls], axis=1))
+# Check if y and X have the exact same number of rows
+print(f"Rows in y: {len(y)}, Rows in X: {len(X)}")
+pooled_model = sm.OLS(y, X).fit()
+print(pooled_model.summary())
+
